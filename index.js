@@ -4,7 +4,10 @@ const {
 } = require("discord.js");
 
 const mongoose = require("mongoose");
-const { createCanvas, loadImage } = require("canvas");
+const { createCanvas, loadImage, registerFont } = require("canvas");
+
+// ===== إضافة الخط العربي =====
+registerFont('./fonts/Cairo-Regular.ttf', { family: 'Cairo' });
 
 const client = new Client({
   intents: [
@@ -70,7 +73,6 @@ client.on("messageCreate", async (message) => {
   // ===== كولداون 60 ثانية =====
   const now = Date.now();
   if (now - data.lastMessage < 60000) return;
-
   data.lastMessage = now;
 
   // ===== XP =====
@@ -148,24 +150,24 @@ client.on("messageCreate", async (message) => {
     ctx.drawImage(avatar, 45, 45, 160, 160);
     ctx.restore();
 
-    // الاسم
+    // الاسم بالعربي / انجليزي
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 32px sans-serif";
+    ctx.font = "bold 32px Cairo";
     ctx.fillText(user.username, 240, 90);
 
     // اللفل
-    ctx.font = "26px sans-serif";
+    ctx.font = "26px Cairo";
     ctx.fillStyle = "#aaaaaa";
     ctx.fillText(`Level: ${userData.level}`, 240, 130);
 
     // XP
     ctx.fillText(`XP: ${userData.xp} / ${neededXP}`, 240, 160);
 
-    // بار الخلفية
+    // شريط الخلفية
     ctx.fillStyle = "#2a2d31";
     ctx.fillRect(240, 180, 500, 25);
 
-    // بار التقدم
+    // شريط التقدم
     ctx.fillStyle = "#9b59b6";
     ctx.fillRect(240, 180, 500 * progress, 25);
 
