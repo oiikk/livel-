@@ -84,13 +84,13 @@ client.on("messageCreate", async (message) => {
       ).catch(()=>{});
     }
 
-    const roleName = LEVEL_ROLES[nextLevel];
-    if (roleName) {
-      const role = message.guild.roles.cache.find(r => r.name === roleName);
-      if (role) {
-        message.member.roles.add(role).catch(()=>{});
-      }
-    }
+    const roleId = LEVEL_ROLES[nextLevel];
+ if (roleId) {
+  const role = message.guild.roles.cache.get(roleId);
+  if (role) {
+    message.member.roles.add(role).catch(()=>{});
+  }
+}
   }
 
   saveLevels(levels);
