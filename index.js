@@ -21,7 +21,7 @@ const client = new Client({
 // ===== الإعدادات =====
 const PREFIX = "!";
 
-const LEVEL_CHANNEL_ID = "PUT_LEVEL_CHANNEL_ID_HERE";
+const LEVEL_CHANNEL_ID = "1463109215915741204";
 
 const LEVEL_ROLES = {
   2: "1463097131966529679",
