@@ -89,7 +89,7 @@ client.on("messageCreate", async (message) => {
     const levelChannel = message.guild.channels.cache.get(LEVEL_CHANNEL_ID);
     if (levelChannel) {
       levelChannel.send(
-        `${message.author} leveled up from level ${oldLevel} to ${nextLevel}🌙 Keep shining!`
+        `${message.author} You leveled up from level ${oldLevel} to ${nextLevel}🌙 Keep shining!`
       ).catch(() => {});
     }
 
