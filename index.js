@@ -24,12 +24,12 @@ const PREFIX = "!";
 const LEVEL_CHANNEL_ID = "PUT_LEVEL_CHANNEL_ID_HERE";
 
 const LEVEL_ROLES = {
-  2: "Level 2",
-  5: "Level 5",
-  10: "Level 10",
-  15: "Level 15",
-  20: "Level 20",
-  30: "Level 30",
+  2: "ROLE_ID_LEVEL_2",
+  5: "ROLE_ID_LEVEL_5",
+  10: "ROLE_ID_LEVEL_10",
+  15: "ROLE_ID_LEVEL_15",
+  20: "ROLE_ID_LEVEL_20",
+  30: "ROLE_ID_LEVEL_30",
 };
 
 // ===== ملف التخزين =====
