@@ -13,7 +13,7 @@ const client = new Client({
 
 // ===== SETTINGS =====
 const PREFIX = "!";
-const LEVEL_CHANNEL_ID = "1463109215915741204"; // channel to send level up messages
+const LEVEL_CHANNEL_ID = "1463109215915741204"; // channel to send level-up messages
 
 const LEVEL_ROLES = {
   2: "1463097131966529679",
@@ -48,26 +48,28 @@ function xpNeeded(level) {
   return level * 100;
 }
 
+// ===== COOLDOWN SETTINGS =====
+const XP_COOLDOWN = 60 * 1000; // 60 seconds cooldown
+const xpCooldowns = {};
+
 // ===== MESSAGE CREATE =====
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  let data = await Level.findOne({ userId: message.author.id });
+  // ===== XP SPAM PROTECTION =====
+  const userId = message.author.id;
+  const now = Date.now();
+  if (!xpCooldowns[userId]) xpCooldowns[userId] = 0;
+  if (now - xpCooldowns[userId] < XP_COOLDOWN) return; // user is on cooldown
+  xpCooldowns[userId] = now;
+
+  // ===== FETCH OR CREATE USER DATA =====
+  let data = await Level.findOne({ userId });
   if (!data) {
-    data = await Level.create({
-      userId: message.author.id,
-      xp: 0,
-      level: 0,
-      lastMessage: 0,
-    });
+    data = await Level.create({ userId, xp: 0, level: 0, lastMessage: 0 });
   }
 
-  // ===== 60s cooldown =====
-  const now = Date.now();
-  if (now - data.lastMessage < 60000) return;
-  data.lastMessage = now;
-
-  // ===== XP GAIN =====
+  // ===== GIVE XP =====
   const xpGain = Math.floor(Math.random() * 10) + 5;
   data.xp += xpGain;
 
@@ -79,15 +81,15 @@ client.on("messageCreate", async (message) => {
     data.level = nextLevel;
     data.xp = 0;
 
-    // ===== Send level up message =====
+    // ===== SEND LEVEL-UP MESSAGE =====
     const levelChannel = message.guild.channels.cache.get(LEVEL_CHANNEL_ID);
     if (levelChannel) {
       levelChannel.send(
-        `🌙 | ${message.author} leveled up from level ${oldLevel} to ${nextLevel}! Keep shining!`
+        `${message.author} leveled up from level ${oldLevel} to ${nextLevel}! Keep shining!`
       ).catch(() => {});
     }
 
-    // ===== Give role if exists =====
+    // ===== GIVE ROLE IF EXISTS =====
     const roleId = LEVEL_ROLES[nextLevel];
     if (roleId) {
       const role = message.guild.roles.cache.get(roleId);
@@ -113,7 +115,7 @@ client.on("messageCreate", async (message) => {
     const neededXP = xpNeeded(userData.level + 1);
     const progress = userData.xp / neededXP;
 
-    // ===== Create rank card =====
+    // ===== CREATE RANK CARD =====
     const canvas = createCanvas(800, 250);
     const ctx = canvas.getContext("2d");
 
