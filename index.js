@@ -1,13 +1,10 @@
 const {
   Client,
   GatewayIntentBits,
-  PermissionsBitField,
-  ActionRowBuilder,
-  StringSelectMenuBuilder,
-  EmbedBuilder,
 } = require("discord.js");
 
-const fs = require("fs");
+const mongoose = require("mongoose");
+const { createCanvas, loadImage } = require("canvas");
 
 const client = new Client({
   intents: [
@@ -20,7 +17,6 @@ const client = new Client({
 
 // ===== الإعدادات =====
 const PREFIX = "!";
-
 const LEVEL_CHANNEL_ID = "1463109215915741204";
 
 const LEVEL_ROLES = {
@@ -32,68 +28,83 @@ const LEVEL_ROLES = {
   30: "1463098038376730644",
 };
 
-// ===== ملف التخزين =====
-const LEVEL_FILE = "./levels.json";
-if (!fs.existsSync(LEVEL_FILE)) fs.writeFileSync(LEVEL_FILE, JSON.stringify({}));
+// ===== اتصال MongoDB =====
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB Connected 🔥"))
+  .catch(err => console.log(err));
 
-function getLevels() {
-  return JSON.parse(fs.readFileSync(LEVEL_FILE));
-}
+const levelSchema = new mongoose.Schema({
+  userId: String,
+  xp: Number,
+  level: Number,
+  lastMessage: Number,
+});
 
-function saveLevels(data) {
-  fs.writeFileSync(LEVEL_FILE, JSON.stringify(data, null, 2));
-}
-
-function xpNeeded(level) {
-  return level * 100;
-}
+const Level = mongoose.model("Level", levelSchema);
 
 // ===== READY =====
 client.once("clientReady", () => {
   console.log(`${client.user.tag} شغال 🔥`);
 });
 
+// ===== XP المطلوب =====
+function xpNeeded(level) {
+  return level * 100;
+}
+
 // ===== الرسائل =====
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  const levels = getLevels();
-  const userId = message.author.id;
+  let data = await Level.findOne({ userId: message.author.id });
 
-  if (!levels[userId]) {
-    levels[userId] = { xp: 0, level: 0 };
+  if (!data) {
+    data = await Level.create({
+      userId: message.author.id,
+      xp: 0,
+      level: 0,
+      lastMessage: 0,
+    });
   }
 
-  // ===== نظام XP =====
+  // ===== كولداون 60 ثانية =====
+  const now = Date.now();
+  if (now - data.lastMessage < 60000) return;
+
+  data.lastMessage = now;
+
+  // ===== XP =====
   const xpGain = Math.floor(Math.random() * 10) + 5;
-  levels[userId].xp += xpGain;
+  data.xp += xpGain;
 
-  let nextLevel = levels[userId].level + 1;
-  let needed = xpNeeded(nextLevel);
+  const nextLevel = data.level + 1;
+  const needed = xpNeeded(nextLevel);
 
-  if (levels[userId].xp >= needed) {
-    const oldLevel = levels[userId].level;
+  if (data.xp >= needed) {
+    const oldLevel = data.level;
 
-    levels[userId].level = nextLevel;
-    levels[userId].xp = 0;
+    data.level = nextLevel;
+    data.xp = 0;
 
+    // رسالة في روم اللفلز فقط
     const levelChannel = message.guild.channels.cache.get(LEVEL_CHANNEL_ID);
     if (levelChannel) {
       levelChannel.send(
         `🌙 | ${message.author} You leveled up from level ${oldLevel} to ${nextLevel} 🌙 Keep shining!`
-      ).catch(()=>{});
+      ).catch(() => {});
     }
 
+    // إعطاء الرول
     const roleId = LEVEL_ROLES[nextLevel];
- if (roleId) {
-  const role = message.guild.roles.cache.get(roleId);
-  if (role) {
-    message.member.roles.add(role).catch(()=>{});
-  }
-}
+    if (roleId) {
+      const role = message.guild.roles.cache.get(roleId);
+      if (role) {
+        message.member.roles.add(role).catch(() => {});
+      }
+    }
   }
 
-  saveLevels(levels);
+  await data.save();
 
   // ===== الأوامر =====
   if (!message.content.startsWith(PREFIX)) return;
@@ -104,25 +115,68 @@ client.on("messageCreate", async (message) => {
   // ===== !rank =====
   if (command === "rank") {
     const user = message.mentions.users.first() || message.author;
-    const data = levels[user.id];
 
-    if (!data) {
+    const userData = await Level.findOne({ userId: user.id });
+
+    if (!userData) {
       return message.reply("ما عندك بيانات لفل لسه.");
     }
 
-    const neededXP = xpNeeded(data.level + 1);
+    const neededXP = xpNeeded(userData.level + 1);
+    const progress = userData.xp / neededXP;
 
-    const embed = new EmbedBuilder()
-      .setColor("#2b2d31")
-      .setTitle(`📊 Rank - ${user.username}`)
-      .addFields(
-        { name: "Level", value: `${data.level}`, inline: true },
-        { name: "XP", value: `${data.xp} / ${neededXP}`, inline: true }
-      )
-      .setThumbnail(user.displayAvatarURL())
-      .setTimestamp();
+    const canvas = createCanvas(800, 250);
+    const ctx = canvas.getContext("2d");
 
-    message.reply({ embeds: [embed] });
+    // خلفية
+    ctx.fillStyle = "#111214";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "#1a1c20";
+    ctx.fillRect(20, 20, 760, 210);
+
+    // صورة العضو
+    const avatar = await loadImage(
+      user.displayAvatarURL({ extension: "png", size: 256 })
+    );
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(125, 125, 80, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatar, 45, 45, 160, 160);
+    ctx.restore();
+
+    // الاسم
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 32px sans-serif";
+    ctx.fillText(user.username, 240, 90);
+
+    // اللفل
+    ctx.font = "26px sans-serif";
+    ctx.fillStyle = "#aaaaaa";
+    ctx.fillText(`Level: ${userData.level}`, 240, 130);
+
+    // XP
+    ctx.fillText(`XP: ${userData.xp} / ${neededXP}`, 240, 160);
+
+    // بار الخلفية
+    ctx.fillStyle = "#2a2d31";
+    ctx.fillRect(240, 180, 500, 25);
+
+    // بار التقدم
+    ctx.fillStyle = "#9b59b6";
+    ctx.fillRect(240, 180, 500 * progress, 25);
+
+    const buffer = canvas.toBuffer();
+
+    await message.reply({
+      files: [{
+        attachment: buffer,
+        name: "rank.png"
+      }]
+    });
   }
 });
 
