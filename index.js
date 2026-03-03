@@ -52,7 +52,7 @@ function xpNeeded(level) {
 }
 
 // ===== XP COOLDOWN =====
-const XP_COOLDOWN = 60 * 1000; // 60 seconds
+const XP_COOLDOWN = 1  * 1000; // 60 seconds
 const xpCooldowns = {};
 
 // ===== MESSAGE CREATE =====
