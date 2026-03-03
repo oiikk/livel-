@@ -1,7 +1,11 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require("discord.js");
 const mongoose = require("mongoose");
-const { createCanvas, loadImage } = require("canvas");
+const { createCanvas, loadImage, registerFont } = require("canvas");
 
+// ===== REGISTER ARABIC FONT =====
+registerFont('./fonts/Cairo-VariableFont_slnt,wght.ttf', { family: 'Cairo' });
+
+// ===== CLIENT =====
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -13,8 +17,7 @@ const client = new Client({
 
 // ===== SETTINGS =====
 const PREFIX = "!";
-const LEVEL_CHANNEL_ID = "1463109215915741204"; // channel to send level-up messages
-
+const LEVEL_CHANNEL_ID = "1463109215915741204"; // channel for level-up messages
 const LEVEL_ROLES = {
   2: "1463097131966529679",
   5: "1463097276053327983",
@@ -24,7 +27,7 @@ const LEVEL_ROLES = {
   30: "1463098038376730644",
 };
 
-// ===== MONGODB CONNECTION =====
+// ===== MONGODB =====
 mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log("MongoDB Connected 🔥"))
   .catch(err => console.log(err));
@@ -39,28 +42,28 @@ const levelSchema = new mongoose.Schema({
 const Level = mongoose.model("Level", levelSchema);
 
 // ===== READY =====
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`${client.user.tag} is online 🔥`);
 });
 
-// ===== XP NEEDED FUNCTION =====
+// ===== XP NEEDED =====
 function xpNeeded(level) {
   return level * 100;
 }
 
-// ===== COOLDOWN SETTINGS =====
-const XP_COOLDOWN = 60 * 1000; // 60 seconds cooldown
+// ===== XP COOLDOWN =====
+const XP_COOLDOWN = 60 * 1000; // 60 seconds
 const xpCooldowns = {};
 
 // ===== MESSAGE CREATE =====
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  // ===== XP SPAM PROTECTION =====
+  // ===== SPAM PROTECTION =====
   const userId = message.author.id;
   const now = Date.now();
   if (!xpCooldowns[userId]) xpCooldowns[userId] = 0;
-  if (now - xpCooldowns[userId] < XP_COOLDOWN) return; // user is on cooldown
+  if (now - xpCooldowns[userId] < XP_COOLDOWN) return;
   xpCooldowns[userId] = now;
 
   // ===== FETCH OR CREATE USER DATA =====
@@ -76,12 +79,13 @@ client.on("messageCreate", async (message) => {
   const nextLevel = data.level + 1;
   const needed = xpNeeded(nextLevel);
 
+  // ===== LEVEL UP =====
   if (data.xp >= needed) {
     const oldLevel = data.level;
     data.level = nextLevel;
     data.xp = 0;
 
-    // ===== SEND LEVEL-UP MESSAGE =====
+    // send message in level channel
     const levelChannel = message.guild.channels.cache.get(LEVEL_CHANNEL_ID);
     if (levelChannel) {
       levelChannel.send(
@@ -89,7 +93,7 @@ client.on("messageCreate", async (message) => {
       ).catch(() => {});
     }
 
-    // ===== GIVE ROLE IF EXISTS =====
+    // give role if exists
     const roleId = LEVEL_ROLES[nextLevel];
     if (roleId) {
       const role = message.guild.roles.cache.get(roleId);
@@ -106,7 +110,7 @@ client.on("messageCreate", async (message) => {
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
-  // ===== !rank COMMAND =====
+  // ===== !rank =====
   if (command === "rank") {
     const user = message.mentions.users.first() || message.author;
     const userData = await Level.findOne({ userId: user.id });
@@ -137,11 +141,11 @@ client.on("messageCreate", async (message) => {
 
     // username
     ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 32px sans-serif";
+    ctx.font = "bold 32px Cairo";
     ctx.fillText(user.username, 240, 90);
 
     // level
-    ctx.font = "26px sans-serif";
+    ctx.font = "26px Cairo";
     ctx.fillStyle = "#aaaaaa";
     ctx.fillText(`Level: ${userData.level}`, 240, 130);
 
