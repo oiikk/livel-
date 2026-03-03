@@ -1,0 +1,17 @@
+{
+  "name": "discord-level-bot",
+  "version": "1.0.0",
+  "description": "Discord Level System Bot with Rank Card",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18.x"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "mongoose": "^8.0.0",
+    "canvas": "^2.11.2"
+  }
+}
