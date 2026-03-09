@@ -184,7 +184,7 @@ client.on("messageCreate", async (message) => {
     ctx.fillRect(20, 20, 760, canvasHeight - 40);
 
     // ===== صورة كبيرة على العنوان (GIF أو PNG) =====
-    const titleImageURL = "https://example.com/logo.gif"; // ضع رابط الصورة هنا
+    const titleImageURL = "https://images-ext-1.discordapp.net/external/ZZG2yreNpi4nfuEU3l96c1qq2qcW7MXHlUxoYHufdo8/https/media.tenor.com/rSYM03_nRcEAAAAi/mi.gif?width=450&height=450"; // ضع رابط الصورة هنا
     try {
       const img = await loadImage(titleImageURL);
       ctx.drawImage(img, 20, 10, 80, 80); // x, y, width, height
