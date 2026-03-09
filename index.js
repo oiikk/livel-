@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits } = require("discord.js");
 const mongoose = require("mongoose");
 const { createCanvas, loadImage, registerFont } = require("canvas");
 
+// ===== REGISTER ARABIC FONT =====
 registerFont('./fonts/Cairo-VariableFont_slnt,wght.ttf', { family: 'Cairo' });
 
 const client = new Client({
@@ -13,9 +14,9 @@ const client = new Client({
   ],
 });
 
+// ===== SETTINGS =====
 const PREFIX = "!";
 const LEVEL_CHANNEL_ID = "1463109215915741204";
-
 const LEVEL_ROLES = {
   2: "1463097131966529679",
   5: "1463097276053327983",
@@ -25,10 +26,12 @@ const LEVEL_ROLES = {
   30: "1463098038376730644",
 };
 
+// ===== MONGODB =====
 mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log("MongoDB Connected 🔥"))
 .catch(err => console.log(err));
 
+// ===== LEVEL SCHEMA =====
 const levelSchema = new mongoose.Schema({
   userId: String,
   xp: Number,
@@ -38,10 +41,12 @@ const levelSchema = new mongoose.Schema({
 
 const Level = mongoose.model("Level", levelSchema);
 
+// ===== READY =====
 client.once("ready", () => {
   console.log(`${client.user.tag} is online 🔥`);
 });
 
+// ===== FUNCTIONS =====
 function xpNeeded(level) {
   return level * 100;
 }
@@ -49,70 +54,63 @@ function xpNeeded(level) {
 const XP_COOLDOWN = 60 * 1000;
 const xpCooldowns = {};
 
-client.on("messageCreate", async (message) => {
+async function checkLevelUp(message, data, userId) {
+  let leveledUp = false;
+  while (data.xp >= xpNeeded(data.level + 1)) {
+    data.xp -= xpNeeded(data.level + 1);
+    const oldLevel = data.level;
+    data.level += 1;
+    leveledUp = true;
 
+    // give role if exists
+    const roleId = LEVEL_ROLES[data.level];
+    if (roleId) {
+      const role = message.guild.roles.cache.get(roleId);
+      if (role) message.guild.members.cache.get(userId).roles.add(role).catch(()=>{});
+    }
+
+    // send message in level channel
+    const levelChannel = message.guild.channels.cache.get(LEVEL_CHANNEL_ID);
+    if (levelChannel) {
+      levelChannel.send(`${message.guild.members.cache.get(userId)} You leveled up from level ${oldLevel} to ${data.level} 🌙`).catch(()=>{});
+    }
+  }
+  await data.save();
+  return leveledUp;
+}
+
+// ===== MESSAGE CREATE =====
+client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   const userId = message.author.id;
   const now = Date.now();
 
+  // ===== XP COOLDOWN =====
   if (!xpCooldowns[userId]) xpCooldowns[userId] = 0;
   if (now - xpCooldowns[userId] >= XP_COOLDOWN) {
 
     xpCooldowns[userId] = now;
 
     let data = await Level.findOne({ userId });
-
     if (!data) {
-      data = await Level.create({
-        userId,
-        xp: 0,
-        level: 0,
-        lastMessage: 0
-      });
+      data = await Level.create({ userId, xp: 0, level: 0, lastMessage: 0 });
     }
 
     const xpGain = Math.floor(Math.random() * 10) + 5;
     data.xp += xpGain;
 
-    const nextLevel = data.level + 1;
-    const needed = xpNeeded(nextLevel);
-
-    if (data.xp >= needed) {
-
-      const oldLevel = data.level;
-      data.level = nextLevel;
-      data.xp = 0;
-
-      const levelChannel = message.guild.channels.cache.get(LEVEL_CHANNEL_ID);
-
-      if (levelChannel) {
-        levelChannel.send(
-          `${message.author} You leveled up from level ${oldLevel} to ${nextLevel} 🌙`
-        ).catch(()=>{});
-      }
-
-      const roleId = LEVEL_ROLES[nextLevel];
-
-      if (roleId) {
-        const role = message.guild.roles.cache.get(roleId);
-        if (role) message.member.roles.add(role).catch(()=>{});
-      }
-    }
-
-    await data.save();
+    await checkLevelUp(message, data, userId);
   }
 
+  // ===== COMMANDS =====
   if (!message.content.startsWith(PREFIX)) return;
-
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
   // ===== setxp =====
   if (command === "setxp") {
-
-    if (!message.member.permissions.has("Administrator"))
-      return message.reply("❌ ما عندك صلاحية");
+    if (!message.member.permissions.has("Administrator")) return message.reply("❌ ما عندك صلاحية");
 
     const member = message.mentions.users.first();
     const amount = parseInt(args[1]);
@@ -121,30 +119,78 @@ client.on("messageCreate", async (message) => {
     if (isNaN(amount)) return message.reply("❌ حط رقم XP");
 
     let data = await Level.findOne({ userId: member.id });
+    if (!data) data = await Level.create({ userId: member.id, xp: amount, level: 0, lastMessage: 0 });
+    else data.xp = amount;
 
-    if (!data) {
-      data = await Level.create({
-        userId: member.id,
-        xp: amount,
-        level: 0,
-        lastMessage: 0
-      });
-    } else {
-      data.xp = amount;
+    const leveledUp = await checkLevelUp(message, data, member.id);
+
+    let replyText = `✅ تم تعيين XP لـ ${member} إلى ${data.xp}`;
+    if (leveledUp) replyText += `\n🎉 ${member} أصبح الآن مستوى ${data.level}!`;
+    message.reply(replyText);
+  }
+
+  // ===== addxp =====
+  if (command === "addxp") {
+    if (!message.member.permissions.has("Administrator")) return message.reply("❌ ما عندك صلاحية");
+
+    const member = message.mentions.users.first();
+    const amount = parseInt(args[1]);
+
+    if (!member) return message.reply("❌ منشن العضو");
+    if (isNaN(amount)) return message.reply("❌ حط رقم XP");
+
+    let data = await Level.findOne({ userId: member.id });
+    if (!data) data = await Level.create({ userId: member.id, xp: amount, level: 0, lastMessage: 0 });
+    else data.xp += amount;
+
+    const leveledUp = await checkLevelUp(message, data, member.id);
+
+    let replyText = `✅ تم زيادة XP لـ ${member} بمقدار ${amount}, الآن XP: ${data.xp}`;
+    if (leveledUp) replyText += `\n🎉 ${member} أصبح الآن مستوى ${data.level}!`;
+    message.reply(replyText);
+  }
+
+  // ===== setlevel =====
+  if (command === "setlevel") {
+    if (!message.member.permissions.has("Administrator")) return message.reply("❌ ما عندك صلاحية");
+
+    const member = message.mentions.users.first();
+    const newLevel = parseInt(args[1]);
+
+    if (!member) return message.reply("❌ منشن العضو");
+    if (isNaN(newLevel)) return message.reply("❌ حط رقم المستوى");
+
+    let data = await Level.findOne({ userId: member.id });
+    if (!data) data = await Level.create({ userId: member.id, xp: 0, level: newLevel, lastMessage: 0 });
+    else data.level = newLevel;
+
+    // reset XP to 0 after setlevel
+    data.xp = 0;
+
+    await checkLevelUp(message, data, member.id);
+
+    message.reply(`✅ تم تعيين مستوى ${member} إلى ${data.level}`);
+  }
+
+  // ===== top =====
+  if (command === "top") {
+    const top = await Level.find().sort({ level: -1, xp: -1 }).limit(10);
+    if (!top || top.length === 0) return message.reply("No level data found.");
+
+    let description = "";
+    for (let i = 0; i < top.length; i++) {
+      const member = await message.guild.members.fetch(top[i].userId).catch(()=>null);
+      if (!member) continue;
+      description += `${i+1}. ${member.user.username} - Level ${top[i].level} | XP: ${top[i].xp}\n`;
     }
 
-    await data.save();
-
-    message.reply(`✅ تم تعيين XP لـ ${member} إلى ${amount}`);
+    message.reply({ content: `🏆 Top 10 Levels:\n\n${description}` });
   }
 
   // ===== rank =====
   if (command === "rank") {
-
     const user = message.mentions.users.first() || message.author;
-
     const userData = await Level.findOne({ userId: user.id });
-
     if (!userData) return message.reply("No level data found");
 
     const neededXP = xpNeeded(userData.level + 1);
@@ -155,12 +201,10 @@ client.on("messageCreate", async (message) => {
 
     ctx.fillStyle = "#111214";
     ctx.fillRect(0,0,800,250);
-
     ctx.fillStyle = "#1a1c20";
     ctx.fillRect(20,20,760,210);
 
     const avatar = await loadImage(user.displayAvatarURL({ extension:"png", size:256 }));
-
     ctx.save();
     ctx.beginPath();
     ctx.arc(125,125,80,0,Math.PI*2,true);
@@ -180,15 +224,11 @@ client.on("messageCreate", async (message) => {
 
     ctx.fillStyle = "#2a2d31";
     ctx.fillRect(240,180,500,25);
-
     ctx.fillStyle = "#9b59b6";
-    ctx.fillRect(240,180,500 * progress,25);
+    ctx.fillRect(240,180,500*progress,25);
 
     const buffer = canvas.toBuffer();
-
-    await message.reply({
-      files:[{ attachment:buffer, name:"rank.png"}]
-    });
+    await message.reply({ files:[{ attachment: buffer, name:"rank.png"}] });
   }
 
 });
