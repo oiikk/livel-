@@ -62,14 +62,12 @@ async function checkLevelUp(message, data, userId) {
     data.level += 1;
     leveledUp = true;
 
-    // give role if exists
     const roleId = LEVEL_ROLES[data.level];
     if (roleId) {
       const role = message.guild.roles.cache.get(roleId);
       if (role) message.guild.members.cache.get(userId).roles.add(role).catch(()=>{});
     }
 
-    // send message in level channel
     const levelChannel = message.guild.channels.cache.get(LEVEL_CHANNEL_ID);
     if (levelChannel) {
       levelChannel.send(`${message.guild.members.cache.get(userId)} You leveled up from level ${oldLevel} to ${data.level} 🌙`).catch(()=>{});
@@ -185,9 +183,18 @@ client.on("messageCreate", async (message) => {
     ctx.fillStyle = "#1a1c20";
     ctx.fillRect(20, 20, 760, canvasHeight - 40);
 
+    // ===== Add small image next to title =====
+    const titleImageURL = "https://images-ext-1.discordapp.net/external/ZZG2yreNpi4nfuEU3l96c1qq2qcW7MXHlUxoYHufdo8/https/media.tenor.com/rSYM03_nRcEAAAAi/mi.gif?width=450&height=450"; // ضع رابط الصورة هنا
+    try {
+      const img = await loadImage(titleImageURL);
+      ctx.drawImage(img, 30, 15, 40, 40);
+    } catch (err) {
+      console.log("Failed to load title image:", err);
+    }
+
     ctx.font = "bold 28px Cairo";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("top 10 *HIM*", 30, 50);
+    ctx.fillText("🏆 Top 10 Levels", 80, 50);
 
     let yOffset = 90;
 
