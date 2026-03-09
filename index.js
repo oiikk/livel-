@@ -174,7 +174,7 @@ client.on("messageCreate", async (message) => {
     const top = await Level.find().sort({ level: -1, xp: -1 }).limit(10);
     if (!top || top.length === 0) return message.reply("No level data found.");
 
-    const canvasHeight = 80 * top.length + 70;
+    const canvasHeight = 80 * top.length + 100;
     const canvas = createCanvas(800, canvasHeight);
     const ctx = canvas.getContext("2d");
 
@@ -183,20 +183,20 @@ client.on("messageCreate", async (message) => {
     ctx.fillStyle = "#1a1c20";
     ctx.fillRect(20, 20, 760, canvasHeight - 40);
 
-    // ===== Add small image next to title =====
-    const titleImageURL = "https://images-ext-1.discordapp.net/external/ZZG2yreNpi4nfuEU3l96c1qq2qcW7MXHlUxoYHufdo8/https/media.tenor.com/rSYM03_nRcEAAAAi/mi.gif?width=450&height=450"; // ضع رابط الصورة هنا
+    // ===== صورة كبيرة على العنوان (GIF أو PNG) =====
+    const titleImageURL = "https://example.com/logo.gif"; // ضع رابط الصورة هنا
     try {
       const img = await loadImage(titleImageURL);
-      ctx.drawImage(img, 30, 15, 40, 40);
+      ctx.drawImage(img, 20, 10, 80, 80); // x, y, width, height
     } catch (err) {
       console.log("Failed to load title image:", err);
     }
 
-    ctx.font = "bold 28px Cairo";
+    ctx.font = "bold 32px Cairo";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("🏆 Top 10 Levels", 80, 50);
+    ctx.fillText("🏆 Top 10 Levels", 120, 50);
 
-    let yOffset = 90;
+    let yOffset = 100;
 
     for (let i = 0; i < top.length; i++) {
       const member = await message.guild.members.fetch(top[i].userId).catch(()=>null);
