@@ -164,7 +164,6 @@ client.on("messageCreate", async (message) => {
     if (!data) data = await Level.create({ userId: member.id, xp: 0, level: newLevel, lastMessage: 0 });
     else data.level = newLevel;
 
-    // reset XP to 0 after setlevel
     data.xp = 0;
 
     await checkLevelUp(message, data, member.id);
@@ -177,14 +176,45 @@ client.on("messageCreate", async (message) => {
     const top = await Level.find().sort({ level: -1, xp: -1 }).limit(10);
     if (!top || top.length === 0) return message.reply("No level data found.");
 
-    let description = "";
+    const canvasHeight = 80 * top.length + 70;
+    const canvas = createCanvas(800, canvasHeight);
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#111214";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#1a1c20";
+    ctx.fillRect(20, 20, 760, canvasHeight - 40);
+
+    ctx.font = "bold 28px Cairo";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("🏆 Top 10 Levels", 30, 50);
+
+    let yOffset = 90;
+
     for (let i = 0; i < top.length; i++) {
       const member = await message.guild.members.fetch(top[i].userId).catch(()=>null);
       if (!member) continue;
-      description += `${i+1}. ${member.user.username} - Level ${top[i].level} | XP: ${top[i].xp}\n`;
+
+      const avatar = await loadImage(member.user.displayAvatarURL({ extension:"png", size:128 }));
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(60, yOffset + 40, 30, 0, Math.PI*2, true);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(avatar, 30, yOffset + 10, 60, 60);
+      ctx.restore();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "24px Cairo";
+      ctx.fillText(`${i+1}. ${member.user.username}`, 110, yOffset + 40);
+      ctx.fillStyle = "#aaaaaa";
+      ctx.fillText(`Level: ${top[i].level} | XP: ${top[i].xp}`, 110, yOffset + 70);
+
+      yOffset += 80;
     }
 
-    message.reply({ content: `🏆 Top 10 Levels:\n\n${description}` });
+    const buffer = canvas.toBuffer();
+    await message.reply({ files:[{ attachment: buffer, name:"top.png"}] });
   }
 
   // ===== rank =====
