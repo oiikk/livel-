@@ -187,7 +187,7 @@ client.on("messageCreate", async (message) => {
 
     ctx.font = "bold 28px Cairo";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("🏆 Top 10 Levels", 30, 50);
+    ctx.fillText("زط انقر لابوبو ماتشا", 30, 50);
 
     let yOffset = 90;
 
