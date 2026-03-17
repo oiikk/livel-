@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits } = require("discord.js");
 const mongoose = require("mongoose");
 const { createCanvas, loadImage, registerFont } = require("canvas");
+const fs = require("fs");
 
 // ===== REGISTER ARABIC FONT =====
 registerFont('./fonts/Cairo-VariableFont_slnt,wght.ttf', { family: 'Cairo' });
@@ -28,8 +29,8 @@ const LEVEL_ROLES = {
 
 // ===== MONGODB =====
 mongoose.connect(process.env.MONGO_URL)
-.then(() => console.log("MongoDB Connected 🔥"))
-.catch(err => console.log(err));
+  .then(() => console.log("MongoDB Connected 🔥"))
+  .catch(err => console.log(err));
 
 // ===== LEVEL SCHEMA =====
 const levelSchema = new mongoose.Schema({
@@ -183,11 +184,10 @@ client.on("messageCreate", async (message) => {
     ctx.fillStyle = "#1a1c20";
     ctx.fillRect(20, 20, 760, canvasHeight - 40);
 
-    // ===== صورة كبيرة على العنوان (GIF أو PNG) =====
-    const titleImageURL = "https://media.discordapp.net/attachments/1473286639840268431/1480426834423316635/e468943da8c63857.png?ex=69afa26e&is=69ae50ee&hm=6fbe77eede6c36fa4bfaf721d86e0961de10f71532844b1a81f9729cba5deb6f&=&format=webp&quality=lossless&width=192&height=192"; // ضع رابط الصورة هنا
+    const titleImageURL = "https://media.discordapp.net/attachments/1473286639840268431/1480426834423316635/e468943da8c63857.png?ex=69afa26e&is=69ae50ee&hm=6fbe77eede6c36fa4bfaf721d86e0961de10f71532844b1a81f9729cba5deb6f&=&format=webp&quality=lossless&width=192&height=192";
     try {
       const img = await loadImage(titleImageURL);
-      ctx.drawImage(img, 20, 10, 80, 80); // x, y, width, height
+      ctx.drawImage(img, 20, 10, 80, 80);
     } catch (err) {
       console.log("Failed to load title image:", err);
     }
@@ -266,6 +266,36 @@ client.on("messageCreate", async (message) => {
 
     const buffer = canvas.toBuffer();
     await message.reply({ files:[{ attachment: buffer, name:"rank.png"}] });
+  }
+
+  // ===== exportlevels =====
+  if (command === "exportlevels") {
+
+    if (!message.member.permissions.has("Administrator")) {
+      return message.reply("❌ ما عندك صلاحية");
+    }
+
+    try {
+      const data = await Level.find();
+
+      if (!data || data.length === 0) {
+        return message.reply("❌ ما فيه بيانات levels");
+      }
+
+      const jsonData = JSON.stringify(data, null, 2);
+
+      fs.writeFileSync("levels_backup.json", jsonData);
+
+      await message.reply({
+        content: "✅ تم استخراج ملف المستويات",
+        files: [{ attachment: "levels_backup.json", name: "levels_backup.json" }]
+      });
+
+    } catch (err) {
+      console.error(err);
+      message.reply("❌ صار خطأ أثناء استخراج البيانات");
+    }
+
   }
 
 });
